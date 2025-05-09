@@ -1,7 +1,6 @@
 import discord
 import json
 from redbot.core import commands, Config
-from redbot.core.utils.chat_formatting import box
 from discord.ui import Button, View
 
 
@@ -11,7 +10,20 @@ class EphemeralButtons(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.config = Config.get_conf(self, identifier=1234567890)
-        self.config.register_global(buttons={})
+        self.config.register_global(buttons={})  # Store buttons globally
+
+    def parse_emoji(self, emoji_string):
+        """Function to parse a string into a valid emoji object (handles custom emojis)."""
+        if isinstance(emoji_string, discord.PartialEmoji):
+            return emoji_string
+        elif isinstance(emoji_string, str) and emoji_string.startswith("<:") and emoji_string.endswith(">"):
+            try:
+                return discord.PartialEmoji.from_str(emoji_string)
+            except Exception as e:
+                print(f"Error parsing emoji: {e}")
+                return None
+        else:
+            return emoji_string  # Assume it's a regular Unicode emoji
 
     @commands.command()
     async def ephemeraltest(self, ctx):
@@ -65,18 +77,23 @@ class EphemeralButtons(commands.Cog):
 
         custom_id = f"btn_{label}_{ctx.message.id}"
 
+        # Parse the emoji if it's in the label (or options)
+        emoji = self.parse_emoji(label)  # Assuming the label might contain the emoji string
+
+        # Store button details for reuse and removal later
         buttons = await self.config.buttons()
         buttons[str(message_id)] = buttons.get(str(message_id), {})
         buttons[str(message_id)][custom_id] = {
             "label": label,
             "ephemeral": ephemeral,
             "response_type": response_type,
-            "content": content
+            "content": content,
+            "emoji": str(emoji),  # Store emoji as string for reuse
         }
         await self.config.buttons.set(buttons)
 
         view = View()
-        view.add_item(Button(label=label, custom_id=custom_id))
+        view.add_item(Button(label=label, custom_id=custom_id, emoji=emoji))
 
         try:
             await msg.edit(view=view)
@@ -84,6 +101,42 @@ class EphemeralButtons(commands.Cog):
             return await ctx.send("Failed to edit message with button.")
 
         await ctx.send("✅ Button added!")
+
+    @commands.command()
+    async def removebutton(self, ctx, channel_id: int, message_id: int, label: str):
+        """Remove a button from an existing message."""
+        try:
+            # Fetch the button from stored buttons
+            buttons = await self.config.buttons()
+            button_data = buttons.get(str(message_id), {}).get(f"btn_{label}_{ctx.message.id}")
+            if not button_data:
+                return await ctx.send(f"Button `{label}` not found on this message.")
+
+            # Parse the emoji if necessary
+            emoji = self.parse_emoji(button_data["emoji"])
+
+            # Fetch the message
+            channel = ctx.guild.get_channel(channel_id)
+            msg = await channel.fetch_message(message_id)
+            if not msg:
+                return await ctx.send("Message not found.")
+
+            # Remove the button from the message
+            view = View()
+            for item in view.children:
+                if item.custom_id == f"btn_{label}_{ctx.message.id}":
+                    view.remove_item(item)
+
+            # Update the message view to remove the button
+            await msg.edit(view=view)
+
+            # Optionally remove it from the stored config
+            del buttons[str(message_id)][f"btn_{label}_{ctx.message.id}"]
+            await self.config.buttons.set(buttons)
+
+            await ctx.send(f"✅ Button `{label}` removed from the message.")
+        except Exception as e:
+            await ctx.send(f"Error removing button: {e}")
 
     @commands.Cog.listener()
     async def on_interaction(self, interaction: discord.Interaction):
@@ -106,4 +159,3 @@ class EphemeralButtons(commands.Cog):
                 await interaction.response.send_message(embed=embed, ephemeral=data["ephemeral"])
             except Exception as e:
                 await interaction.response.send_message(f"Failed to send embed: {e}", ephemeral=True)
-
