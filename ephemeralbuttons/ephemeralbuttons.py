@@ -71,29 +71,26 @@ class EphemeralButtons(commands.Cog):
 
         try:
             channel = ctx.guild.get_channel(channel_id)
+            if channel is None:
+                raise ValueError("Channel not found!")
             msg = await channel.fetch_message(message_id)
         except Exception as e:
             return await ctx.send(f"Couldn't fetch the message: {e}")
 
         custom_id = f"btn_{label}_{ctx.message.id}"
 
-        # Parse the emoji if it's in the label (or options)
-        emoji = self.parse_emoji(label)  # Assuming the label might contain the emoji string
-
-        # Store button details for reuse and removal later
         buttons = await self.config.buttons()
         buttons[str(message_id)] = buttons.get(str(message_id), {})
         buttons[str(message_id)][custom_id] = {
             "label": label,
             "ephemeral": ephemeral,
             "response_type": response_type,
-            "content": content,
-            "emoji": str(emoji),  # Store emoji as string for reuse
+            "content": content
         }
         await self.config.buttons.set(buttons)
 
         view = View()
-        view.add_item(Button(label=label, custom_id=custom_id, emoji=emoji))
+        view.add_item(Button(label=label, custom_id=custom_id))
 
         try:
             await msg.edit(view=view)
@@ -111,9 +108,6 @@ class EphemeralButtons(commands.Cog):
             button_data = buttons.get(str(message_id), {}).get(f"btn_{label}_{ctx.message.id}")
             if not button_data:
                 return await ctx.send(f"Button `{label}` not found on this message.")
-
-            # Parse the emoji if necessary
-            emoji = self.parse_emoji(button_data["emoji"])
 
             # Fetch the message
             channel = ctx.guild.get_channel(channel_id)
