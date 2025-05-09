@@ -1,6 +1,6 @@
 {
     "author": ["coco"],
-    "install_msg": "Thank you for installing `EphemeralButtons.`",
+    "install_msg": "Thank you for installing `ephemeralbuttons`",
     "name": "ephemeralbuttons",
     "short": "Adds ephemeral buttons support.",
     "description": "Create ephemeral button messages."

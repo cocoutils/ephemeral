@@ -1,4 +1,4 @@
-from .ephemeralbuttons import EphemeralButtons
+from .ephemeralbuttons import ephemeralbuttons
 
 async def setup(bot):
-    await bot.add_cog(EphemeralButtons(bot))
+    await bot.add_cog(ephemeralbuttons(bot))

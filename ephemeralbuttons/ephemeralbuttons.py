@@ -5,7 +5,7 @@ from redbotcore.utils.chat_formatting import box
 from discord.ui import Button, View
 
 
-class EphemeralButtons(commands.Cog):
+class ephemeralbuttons(commands.Cog):
     """Send custom ephemeral buttons"""
 
     def __init__(self, bot):
