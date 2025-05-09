@@ -1,7 +1,7 @@
 import discord
 import json
 from redbot.core import commands, Config
-from redbotcore.utils.chat_formatting import box
+from redbot.core.utils.chat_formatting import box
 from discord.ui import Button, View
 
 
